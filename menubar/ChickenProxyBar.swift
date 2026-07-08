@@ -99,6 +99,28 @@ class DashboardWindowController: NSWindowController, WKNavigationDelegate, NSWin
                 let pt = self.webView.convert(event.locationInWindow, from: nil)
                 let x = pt.x
                 let y = self.webView.bounds.height - pt.y
+
+                let semaphore = DispatchSemaphore(value: 0)
+                var isEditable = false
+                self.webView.evaluateJavaScript("""
+                (function(){
+                    var el = document.elementFromPoint(\(x),\(y));
+                    if(!el) return false;
+                    var tag = el.tagName;
+                    return tag === 'INPUT' || tag === 'TEXTAREA' || el.isContentEditable === true;
+                })();
+                """) { result, _ in
+                    isEditable = (result as? Bool) ?? false
+                    semaphore.signal()
+                }
+                _ = semaphore.wait(timeout: .now() + 0.2)
+
+                if isEditable {
+                    // Let the real event through so WKWebView shows its native
+                    // Cut/Copy/Paste menu — text fields don't have a custom menu.
+                    return event
+                }
+
                 self.webView.evaluateJavaScript("""
                 (function(){
                     var el = document.elementFromPoint(\(x),\(y));
@@ -151,6 +173,24 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     let runFrames = ["🐔", "🐓", "🐔", "🐤", "🍗", "🐤", "🐔", "🥚"]
     var dashboardWC: DashboardWindowController?
 
+    private func setupMainMenu() {
+        let mainMenu = NSMenu()
+
+        let editMenuItem = NSMenuItem()
+        let editMenu = NSMenu(title: "Edit")
+        editMenu.addItem(withTitle: "Undo", action: Selector(("undo:")), keyEquivalent: "z")
+        editMenu.addItem(withTitle: "Redo", action: Selector(("redo:")), keyEquivalent: "Z")
+        editMenu.addItem(NSMenuItem.separator())
+        editMenu.addItem(withTitle: "Cut", action: #selector(NSText.cut(_:)), keyEquivalent: "x")
+        editMenu.addItem(withTitle: "Copy", action: #selector(NSText.copy(_:)), keyEquivalent: "c")
+        editMenu.addItem(withTitle: "Paste", action: #selector(NSText.paste(_:)), keyEquivalent: "v")
+        editMenu.addItem(withTitle: "Select All", action: #selector(NSText.selectAll(_:)), keyEquivalent: "a")
+        editMenuItem.submenu = editMenu
+        mainMenu.addItem(editMenuItem)
+
+        NSApp.mainMenu = mainMenu
+    }
+
     private func bundleImage(named base: String) -> NSImage? {
         let imgDir = Bundle.main.resourceURL?.appendingPathComponent("img")
         let ext = (base as NSString).pathExtension
@@ -184,6 +224,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         NSApp.setActivationPolicy(.accessory)
+        setupMainMenu()
 
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         statusItem.button?.font = NSFont.systemFont(ofSize: 14)
