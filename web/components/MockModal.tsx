@@ -266,7 +266,12 @@ export default function MockModal({
   const savedScrollTop = useRef(0);
 
   useLayoutEffect(() => {
-    if (!editing && scrollRef.current) scrollRef.current.scrollTop = savedScrollTop.current;
+    const el = scrollRef.current;
+    if (!editing && el) {
+      el.scrollTop = savedScrollTop.current;
+      const raf = requestAnimationFrame(() => { el.scrollTop = savedScrollTop.current; });
+      return () => cancelAnimationFrame(raf);
+    }
   }, [editing]);
 
   const stopAutoScroll = () => {
@@ -457,15 +462,16 @@ export default function MockModal({
           )}
         </div>
 
-        {editing ? (
+        {editing && (
           <MockEditor
             draft={editing}
             onCancel={() => (initialDraft ? onClose() : setEditing(null))}
             onSaved={() => (initialDraft ? onClose() : setEditing(null))}
           />
-        ) : (
-          <>
-            <div ref={scrollRef} className="p-0 overflow-auto flex-1" onScroll={e => { savedScrollTop.current = e.currentTarget.scrollTop; }} onDragOver={dragRuleId ? handleScrollDragOver : undefined} onDragLeave={stopAutoScroll}>
+        )}
+        {(
+          <div className={`flex flex-col flex-1 min-h-0 ${editing ? "hidden" : ""}`}>
+            <div ref={scrollRef} className="p-0 overflow-auto flex-1" onScroll={e => { if (!editing) savedScrollTop.current = e.currentTarget.scrollTop; }} onDragOver={dragRuleId ? handleScrollDragOver : undefined} onDragLeave={stopAutoScroll}>
               {allEmpty ? (
                 <div className="flex flex-col items-center justify-center py-[52px] px-6 gap-2 text-center">
                   <img src="/chicken-icon.svg" width={48} height={48} alt="" className="mb-1" />
@@ -713,7 +719,7 @@ export default function MockModal({
                 onClick={() => setEditing({ enabled: true, status_code: 200 })}
               >＋ New mock rule</button>
             </div>
-          </>
+          </div>
         )}
       </div>
     </>
