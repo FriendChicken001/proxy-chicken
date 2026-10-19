@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { deleteGroup, deleteMock, reorderMocks, saveGroup, saveMock } from "@/lib/api";
 import type { MockGroup, MockRule } from "@/lib/types";
 
@@ -263,6 +263,11 @@ export default function MockModal({
   const [dropTarget, setDropTarget] = useState<DropTarget | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const scrollRafRef = useRef<number | null>(null);
+  const savedScrollTop = useRef(0);
+
+  useLayoutEffect(() => {
+    if (!editing && scrollRef.current) scrollRef.current.scrollTop = savedScrollTop.current;
+  }, [editing]);
 
   const stopAutoScroll = () => {
     if (scrollRafRef.current !== null) {
@@ -460,7 +465,7 @@ export default function MockModal({
           />
         ) : (
           <>
-            <div ref={scrollRef} className="p-0 overflow-auto flex-1" onDragOver={dragRuleId ? handleScrollDragOver : undefined} onDragLeave={stopAutoScroll}>
+            <div ref={scrollRef} className="p-0 overflow-auto flex-1" onScroll={e => { savedScrollTop.current = e.currentTarget.scrollTop; }} onDragOver={dragRuleId ? handleScrollDragOver : undefined} onDragLeave={stopAutoScroll}>
               {allEmpty ? (
                 <div className="flex flex-col items-center justify-center py-[52px] px-6 gap-2 text-center">
                   <img src="/chicken-icon.svg" width={48} height={48} alt="" className="mb-1" />
