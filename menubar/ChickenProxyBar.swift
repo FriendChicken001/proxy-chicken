@@ -135,7 +135,7 @@ class DashboardWindowController: NSWindowController, WKNavigationDelegate, NSWin
     private func loadDashboard() {
         retryTimer?.invalidate()
         retryTimer = nil
-        webView.load(URLRequest(url: URL(string: kDashboardURL)!))
+        webView.load(URLRequest(url: URL(string: kDashboardURL)!, cachePolicy: .reloadIgnoringLocalCacheData))
     }
 
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {

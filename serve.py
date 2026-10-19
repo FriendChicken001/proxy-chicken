@@ -34,6 +34,12 @@ class Handler(http.server.SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=OUT_DIR, **kwargs)
 
+    def end_headers(self):
+        # WKWebView heuristically caches index.html, so a rebuilt export never shows up
+        if not self.path.startswith("/_next/static/"):
+            self.send_header("Cache-Control", "no-cache")
+        super().end_headers()
+
     def do_OPTIONS(self):
         self.send_response(204)
         self._cors()
